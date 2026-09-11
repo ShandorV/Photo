@@ -1,342 +1,273 @@
-import io
-import os
-import tkinter as tk
-from tkinter import colorchooser, filedialog, messagebox, ttk
-from PIL import Image, ImageDraw, ImageTk
-import segno
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Preview</title>
 
-# Конфігурація шляхів
-ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets", "animals")
+<!-- Підключення шрифтів Playfair Display та Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
 
-# Дефолтні налаштування
-fill_color = "#1B4D3E"  # Лісовий зелений за замовчуванням
-back_color = "#FFFFFF"
-custom_icon_path = None
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
+body{
+    font-family:'Inter', Arial, sans-serif;
+    background-color: #0f0e0d;
+    background-image: 
+        radial-gradient(circle at 50% 0%, rgba(197, 160, 89, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 50% 100%, rgba(20, 18, 16, 0.8) 0%, #0f0e0d 100%);
+    color:#e5e0d8;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding: 20px 12px;
+}
 
-def ensure_assets_dir():
-  if not os.path.exists(ASSETS_DIR):
-    os.makedirs(ASSETS_DIR, exist_ok=True)
+.container{
+    width:100%;
+    max-width:550px;
+    padding: clamp(24px, 5vw, 50px) clamp(16px, 4vw, 40px);
+    border-radius:20px;
+    background:rgba(22, 20, 18, 0.85);
+    border:1px solid rgba(197, 160, 89, 0.2);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+}
 
+h1{
+    text-align:center;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    color: #f2ede4;
+}
 
-def get_preset_animals():
-  ensure_assets_dir()
-  files = [
-      f
-      for f in os.listdir(ASSETS_DIR)
-      if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
-  ]
-  return ["Без іконки", "📂 Завантажити свій файл..."] + files
+.subtitle{
+    text-align:center;
+    color:#a39b8e;
+    font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: clamp(20px, 4vw, 35px);
+    text-transform: uppercase;
+}
 
+.grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
 
-def on_preset_change(event):
-  global custom_icon_path
-  selected = combo_presets.get()
+.photo-card{
+    background: rgba(30, 27, 24, 0.6);
+    border: 1px solid rgba(197, 160, 89, 0.15);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+}
 
-  if selected == "📂 Завантажити свій файл...":
-    path = filedialog.askopenfilename(
-        title="Оберіть зображення тваринки",
-        filetypes=[
-            ("Зображення", "*.png *.jpg *.jpeg *.webp"),
-            ("Усі файли", "*.*"),
-        ],
-    )
-    if path:
-      custom_icon_path = path
-      lbl_icon_info.config(
-          text=f"Файл: {os.path.basename(path)}", fg="#2E7D32"
-      )
-    else:
-      combo_presets.set("Без іконки")
-      custom_icon_path = None
-      lbl_icon_info.config(text="Іконку не обрано", fg="#666666")
-  elif selected == "Без іконки":
-    custom_icon_path = None
-    lbl_icon_info.config(text="Іконку не обрано", fg="#666666")
-  else:
-    custom_icon_path = os.path.join(ASSETS_DIR, selected)
-    lbl_icon_info.config(text=f"Пресет: {selected}", fg="#1976D2")
+.photo-card:hover, .photo-card:active {
+    transform: translateY(-4px);
+    border-color: rgba(197, 160, 89, 0.4);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(197, 160, 89, 0.1);
+}
 
+.photo-card-img-wrapper {
+    overflow: hidden;
+    position: relative;
+}
 
-def choose_fill_color():
-  global fill_color
-  color = colorchooser.askcolor(title="Колір елементів QR", color=fill_color)
-  if color[1]:
-    fill_color = color[1]
-    btn_fill_color.config(bg=fill_color)
+.photo-card img{
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
 
+.photo-card:hover img{
+    transform: scale(1.03);
+}
 
-def choose_back_color():
-  global back_color
-  color = colorchooser.askcolor(title="Колір фону", color=back_color)
-  if color[1]:
-    back_color = color[1]
-    btn_back_color.config(bg=back_color)
+/* Підказка при наведенні або тапі */
+.photo-card-img-wrapper::after {
+    content: "🔍 Tap to view";
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 14, 13, 0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #f2ede4;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
 
+@media (hover: hover) {
+    .photo-card:hover .photo-card-img-wrapper::after {
+        opacity: 1;
+    }
+}
 
-def make_corners_rounded(img, radius=15):
-  """Додає м'які закруглені кути для всього QR-коду (ефект стікера)"""
-  mask = Image.new("L", img.size, 0)
-  draw = ImageDraw.Draw(mask)
-  draw.rounded_rectangle([(0, 0), img.size], radius=radius, fill=255)
+.photo-card h3{
+    padding: 16px 14px;
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 500;
+    font-size: clamp(1.05rem, 3vw, 1.25rem);
+    color: #e5e0d8;
+    letter-spacing: 0.5px;
+    border-top: 1px solid rgba(197, 160, 89, 0.1);
+}
 
-  rounded = Image.new("RGBA", img.size, (0, 0, 0, 0))
-  rounded.paste(img, (0, 0), mask=mask)
-  return rounded
+.footer{
+    margin-top: clamp(20px, 4vw, 35px);
+    text-align: center;
+    color: #7a7368;
+    font-size: clamp(0.7rem, 2vw, 0.8rem);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
 
+/* Modal / Lightbox Styles */
+.lightbox-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 9, 8, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
 
-def generate_qr():
-  data = entry_data.get().strip()
+.lightbox-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
 
-  if not data:
-    messagebox.showwarning("Увага", "Будь ласка, введіть текст або посилання!")
-    return
+.lightbox-content {
+    max-width: 95vw;
+    max-height: 82vh;
+    border-radius: 8px;
+    border: 1px solid rgba(197, 160, 89, 0.3);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    object-fit: contain;
+}
 
-  file_path = filedialog.asksaveasfilename(
-      defaultextension=".png",
-      filetypes=[("PNG Image", "*.png"), ("All Files", "*.*")],
-      title="Зберегти кастомний QR-код як...",
-  )
+.lightbox-modal.active .lightbox-content {
+    transform: scale(1);
+}
 
-  if not file_path:
-    return
+.lightbox-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: #e5e0d8;
+    font-size: 3rem;
+    font-weight: 300;
+    cursor: pointer;
+    line-height: 1;
+    padding: 10px;
+    transition: color 0.2s ease;
+    z-index: 1001;
+    -webkit-tap-highlight-color: transparent;
+}
 
-  try:
-    # 1. Генерація базового QR через Segno з високою корекцією помилок (H)
-    qr = segno.make(data, error="h")
+.lightbox-close:hover, .lightbox-close:active {
+    color: #c5a059;
+}
+</style>
+</head>
 
-    scale = int(combo_scale.get())
-    border = int(combo_border.get())
-    style_shape = combo_style.get()
+<body>
 
-    out = io.BytesIO()
+<div class="container">
 
-    # Застосування стилів
-    if style_shape == "Округлі точки":
-      qr.save(
-          out,
-          kind="png",
-          dark=fill_color,
-          light=back_color,
-          scale=scale,
-          border=border,
-      )
-      img = Image.open(out).convert("RGBA")
-      img = make_corners_rounded(img, radius=int(scale * 1.5))
-    elif style_shape == "М'які кути (Стікер)":
-      qr.save(
-          out,
-          kind="png",
-          dark=fill_color,
-          light=back_color,
-          scale=scale,
-          border=border,
-      )
-      img = Image.open(out).convert("RGBA")
-      img = make_corners_rounded(img, radius=25)
-    else:
-      qr.save(
-          out,
-          kind="png",
-          dark=fill_color,
-          light=back_color,
-          scale=scale,
-          border=border,
-      )
-      img = Image.open(out).convert("RGBA")
+    <h1>Photo Preview</h1>
+    <p class="subtitle">Fine Gallery Display</p>
 
-    # 2. Накладання іконки тваринки (Пресет або Власний файл)
-    if custom_icon_path and os.path.exists(custom_icon_path):
-      icon = Image.open(custom_icon_path).convert("RGBA")
+    <div class="grid">
 
-      qr_w, qr_h = img.size
-      max_icon_size = int(qr_w * 0.23)
-      icon.thumbnail((max_icon_size, max_icon_size), Image.Resampling.LANCZOS)
+        <div class="photo-card">
+            <div class="photo-card-img-wrapper">
+                <!-- ЗОБРАЖЕННЯ SIDE.PNG -->
+                <img src="side.png" alt="Side Photo">
+            </div>
+            <h3>Gundel Restaurant</h3>
+        </div>
 
-      icon_w, icon_h = icon.size
-      pos_x = (qr_w - icon_w) // 2
-      pos_y = (qr_h - icon_h) // 2
+    </div>
 
-      # Кругла біла підкладка під іконку для стабільного сканування
-      pad = 6
-      bg_circle = Image.new(
-          "RGBA", (icon_w + pad * 2, icon_h + pad * 2), (0, 0, 0, 0)
-      )
-      draw_bg = ImageDraw.Draw(bg_circle)
-      draw_bg.ellipse([(0, 0), bg_circle.size], fill=back_color)
+    <div class="footer">
+        Ready to use • Fine Aesthetics • Click to Enlarge
+    </div>
 
-      img.paste(bg_circle, (pos_x - pad, pos_y - pad), mask=bg_circle)
-      img.paste(icon, (pos_x, pos_y), mask=icon)
+</div>
 
-    # 3. Збереження файлу
-    img.save(file_path)
+<!-- Lightbox Modal -->
+<div class="lightbox-modal" id="lightboxModal">
+    <span class="lightbox-close" id="lightboxClose">&times;</span>
+    <img class="lightbox-content" id="lightboxImage" src="" alt="Enlarged preview">
+</div>
 
-    # 4. Прев'ю у вікні програми
-    img_resized = img.resize((190, 190), Image.Resampling.LANCZOS)
-    img_tk = ImageTk.PhotoImage(img_resized)
+<script>
+    const photoCards = document.querySelectorAll('.photo-card');
+    const modal = document.getElementById('lightboxModal');
+    const modalImg = document.getElementById('lightboxImage');
+    const closeBtn = document.getElementById('lightboxClose');
 
-    qr_label.config(image=img_tk)
-    qr_label.image = img_tk
+    photoCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const img = card.querySelector('img');
+            if (img) {
+                modalImg.src = img.src;
+                modalImg.alt = img.alt;
+                modal.classList.add('active');
+            }
+        });
+    });
 
-    status_label.config(text="Успішно збережено!", fg="green")
+    const closeModal = () => {
+        modal.classList.remove('active');
+    };
 
-  except Exception as e:
-    messagebox.showerror("Помилка", f"Не вдалося створити QR-код:\n{e}")
+    closeBtn.addEventListener('click', closeModal);
 
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
 
-# --- ОБРОБКА БУФЕРА ОБМІНУ ТА ГАРЯЧИХ КЛАВІШ ---
-def paste_text(event=None):
-  try:
-    text = root.clipboard_get()
-    entry_data.insert(tk.INSERT, text)
-  except tk.TclError:
-    pass
-  return "break"
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+</script>
 
-
-def universal_paste(event):
-  # event.state & 4 перевіряє затиснутий Ctrl
-  # event.keycode == 86 - фізична клавіша 'V' (незалежно від мови розкладки)
-  if (event.state & 4) and event.keycode == 86:
-    return paste_text()
-
-
-def show_context_menu(event):
-  context_menu.tk_popup(event.x_root, event.y_root)
-
-
-# --- ПАРАМЕТРИ ВІКНА ---
-root = tk.Tk()
-root.title("Zoo QR Designer")
-root.geometry("440x700")
-root.config(padx=15, pady=10)
-
-# --- ПОЛЕ ВВЕДЕННЯ ---
-title_label = tk.Label(
-    root, text="Введіть дані для QR-коду:", font=("Arial", 10, "bold")
-)
-title_label.pack(anchor="w")
-
-entry_data = tk.Entry(root, width=48, font=("Arial", 10))
-entry_data.pack(pady=(2, 10))
-
-# Прив'язуємо гарячі клавіші та контекстне меню
-entry_data.bind("<KeyPress>", universal_paste)
-
-context_menu = tk.Menu(root, tearoff=0)
-context_menu.add_command(label="Вставити", command=paste_text)
-entry_data.bind("<Button-3>", show_context_menu)
-
-# --- БЛОК 1: ПРЕСЕТИ ТВАРИНОК ---
-frame_presets = tk.LabelFrame(
-    root,
-    text=" 🦁 Іконка тваринки (Центр) ",
-    font=("Arial", 10, "bold"),
-    padx=10,
-    pady=8,
-)
-frame_presets.pack(fill="x", pady=5)
-
-combo_presets = ttk.Combobox(
-    frame_presets,
-    values=get_preset_animals(),
-    state="readonly",
-    font=("Arial", 9),
-)
-combo_presets.set("Без іконки")
-combo_presets.pack(fill="x", pady=2)
-combo_presets.bind("<<ComboboxSelected>>", on_preset_change)
-
-lbl_icon_info = tk.Label(
-    frame_presets, text="Іконку не обрано", font=("Arial", 8), fg="#666666"
-)
-lbl_icon_info.pack(anchor="w", pady=(2, 0))
-
-# --- БЛОК 2: СТИЛІЗАЦІЯ ТА ФОРМА ---
-frame_style = tk.LabelFrame(
-    root,
-    text=" 🎨 Стилізація та Форма ",
-    font=("Arial", 10, "bold"),
-    padx=10,
-    pady=8,
-)
-frame_style.pack(fill="x", pady=5)
-
-# Форма модулів
-tk.Label(frame_style, text="Стиль елементів:").grid(
-    row=0, column=0, sticky="e", pady=4
-)
-combo_style = ttk.Combobox(
-    frame_style,
-    values=[
-        "Стандартний (Квадрати)",
-        "Округлі точки",
-        "М'які кути (Стікер)",
-    ],
-    width=22,
-    state="readonly",
-)
-combo_style.set("Округлі точки")
-combo_style.grid(row=0, column=1, sticky="w", padx=5, pady=4)
-
-# Кольори
-btn_fill_color = tk.Button(
-    frame_style,
-    text="Колір QR",
-    bg=fill_color,
-    fg="white",
-    font=("Arial", 9, "bold"),
-    width=12,
-    command=choose_fill_color,
-)
-btn_fill_color.grid(row=1, column=0, padx=5, pady=4)
-
-btn_back_color = tk.Button(
-    frame_style,
-    text="Колір фону",
-    bg=back_color,
-    fg="black",
-    font=("Arial", 9),
-    width=12,
-    command=choose_back_color,
-)
-btn_back_color.grid(row=1, column=1, padx=5, pady=4)
-
-# Розміри
-tk.Label(frame_style, text="Масштаб (Scale):").grid(
-    row=2, column=0, sticky="e", pady=4
-)
-combo_scale = ttk.Combobox(
-    frame_style, values=[6, 8, 10, 12, 15], width=6, state="readonly"
-)
-combo_scale.set(10)
-combo_scale.grid(row=2, column=1, sticky="w", padx=5, pady=4)
-
-tk.Label(frame_style, text="Рамка (Border):").grid(
-    row=3, column=0, sticky="e", pady=4
-)
-combo_border = ttk.Combobox(
-    frame_style, values=[1, 2, 3, 4], width=6, state="readonly"
-)
-combo_border.set(2)
-combo_border.grid(row=3, column=1, sticky="w", padx=5, pady=4)
-
-# --- ГЕНЕРАЦІЯ ТА СТАТУС ---
-generate_btn = tk.Button(
-    root,
-    text="Згенерувати та зберегти",
-    command=generate_qr,
-    font=("Arial", 11, "bold"),
-    bg="#2E7D32",
-    fg="white",
-    pady=6,
-)
-generate_btn.pack(fill="x", pady=10)
-
-status_label = tk.Label(root, text="", font=("Arial", 9))
-status_label.pack()
-
-qr_label = tk.Label(root)
-qr_label.pack(pady=5)
-
-root.mainloop()
+</body>
+</html>
